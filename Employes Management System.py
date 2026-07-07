@@ -137,10 +137,10 @@ def update_employee():
             if Salary_input.strip():
                 try:
                     salary = float(Salary_input)
-                    employee["Salary"] = salary
-                    if salary <0:
+                    if salary < 0:
                         print("Salary must be a positive number! Keeping current salary.")
-                        employee["Salary"] = employee["Salary"]
+                    else:
+                        employee["Salary"] = salary
                 except ValueError:
                     print("Invalid Salary! Keeping current salary.")
 
@@ -204,6 +204,7 @@ while True:
         choice = int(input("Enter the number: "))
     except ValueError:
         print("Invalid Choice! Please enter a number.")
+        continue
     except Exception as e:
         print(f"An error occurred: {e}")
         continue
