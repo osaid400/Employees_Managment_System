@@ -49,7 +49,6 @@ A beginner-friendly console-based Employee Management System built with Python. 
 Employee-Management-System/
 │
 ├── employee_management_system.py
-├── employees.json
 ├── .gitignore
 └── README.md
 ```
