@@ -116,7 +116,7 @@ class Employee_Manager:
 
     def print_employee(self):
         print("=" * 80)
-        print(f"{'Employee Name':<8} {'Employee ID':<32} {'Department':<20} {'Position':<20} {'Position':<20}")
+        print(f"{'Employee Name':<8} {'Employee ID':<32} {'Department':<20} {'Position':<20} {'Salary':<20}")
         print("=" * 80)
 
     @staticmethod
