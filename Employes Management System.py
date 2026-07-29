@@ -378,4 +378,5 @@ def main():
             print("Invalid Choice! Choose between 0 to 5")
 
 
-main()
+if __name__ == "__main__":
+    main()
