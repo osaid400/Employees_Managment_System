@@ -1,212 +1,195 @@
 # EMPLOYEES MANAGEMENT SYSTEM
 # Author: Muhammad Abdullah Farooq
 # Language: Python
-# Level: Beginner
 
 import json
 import os
 import sys
 
-print ("============ Welcome to Employees Management System =============")
+class Admin:
+    def __init__(self, username, password):
+        self.username = username
+        self.password = password
 
-# ---------------- File Handling ----------------
+class Employee:
+    def __init__(self, name, employee_id, department, position, salary):
+        self.name = name
+        self.employee_id = int(employee_id)
+        self.department = department
+        self.position = position
+        self._salary = salary
 
-def load_employees():
-    if os.path.exists("employees.json"):
-        with open("employees.json", "r") as file:
-            data = json.load(file)
-        return data
-    else:
-        return []
+    @property
+    def salary(self):
+        return self._salary
 
-def save_employees():
-    with open("employees.json", "w") as file:
-        json.dump(employees, file, indent=5)
+    @salary.setter
+    def salary(self, value):
+        self._salary = value
 
-employees = load_employees()
+    def __str__(self):
+        return (
+            f"Employee Name: {self.name}\n"
+            f"Employee ID: {self.employee_id}\n"
+            f"Department: {self.department}\n"
+            f"Position: {self.position}\n"
+            f"Salary:  {self.format_currency(self.salary)}\n"
+            )
 
-if not employees:  
-    employees = [
-        {"Name": "Ali", "Employee ID": 101, "Department": "HR", "Position": "Manager", "Salary": 75000},
-        {"Name": "Ahmed", "Employee ID": 102, "Department": "IT", "Position": "Software Engineer", "Salary": 90000},
-        {"Name": "Usman", "Employee ID": 103, "Department": "Finance", "Position": "Accountant", "Salary": 65000},
-        {"Name": "Hassan", "Employee ID": 104, "Department": "Marketing", "Position": "Marketing Officer", "Salary": 55000},
-        {"Name": "Bilal", "Employee ID": 105, "Department": "Sales", "Position": "Sales Executive", "Salary": 60000},
-        {"Name": "Hamza", "Employee ID": 106, "Department": "IT", "Position": "Network Administrator", "Salary": 80000},
-        {"Name": "Ayesha", "Employee ID": 107, "Department": "HR", "Position": "HR Officer", "Salary": 58000},
-        {"Name": "Fatima", "Employee ID": 108, "Department": "Finance", "Position": "Financial Analyst", "Salary": 72000},
-        {"Name": "Zain", "Employee ID": 109, "Department": "Operations", "Position": "Operations Officer", "Salary": 67000},
-        {"Name": "Maryam", "Employee ID": 110, "Department": "Customer Support", "Position": "Support Executive", "Salary": 50000},
-        {"Name": "Saad", "Employee ID": 111, "Department": "Administration", "Position": "Office Administrator", "Salary": 62000},
-        {"Name": "Noor", "Employee ID": 112, "Department": "Research", "Position": "Research Assistant", "Salary": 70000},
-        {"Name": "Abdullah", "Employee ID": 113, "Department": "Finance", "Position": "Cashier", "Salary": 52000},
-        {"Name": "Umer", "Employee ID": 114, "Department": "IT", "Position": "System Administrator", "Salary": 85000},
-        {"Name": "Sana", "Employee ID": 115, "Department": "Marketing", "Position": "Content Writer", "Salary": 54000},
-        {"Name": "Hina", "Employee ID": 116, "Department": "Sales", "Position": "Sales Manager", "Salary": 88000},
-        {"Name": "Shahzaib", "Employee ID": 117, "Department": "Operations", "Position": "Supervisor", "Salary": 68000},
-        {"Name": "Laiba", "Employee ID": 118, "Department": "Customer Support", "Position": "Team Lead", "Salary": 73000},
-        {"Name": "Areeb", "Employee ID": 119, "Department": "Research", "Position": "Data Analyst", "Salary": 82000},
-        {"Name": "Iqra", "Employee ID": 120, "Department": "Administration", "Position": "Receptionist", "Salary": 48000}
-    ]
-    save_employees()
+    def to_dict(self):
+        return {
+            "Name": self.name,
+            "Employee ID": self.employee_id,
+            "Department": self.department,
+            "Position": self.position,
+            "Salary": self._salary
+        }
 
-# Functions of Menu:
+    @classmethod
+    def from_dict(cls, employee_data):
+        return cls(
+            name=employee_data["Name"],
+            employee_id=employee_data["Employee ID"],
+            department=employee_data["Department"],
+            position=employee_data["Position"],
+            salary=employee_data["Salary"]
+        )
 
-def print_employee(employee):
-    print(f"{employee['Employee ID']:<20} {employee['Name']:<20} {employee['Department']:<25} {employee['Position']:<30} {format_currency(employee['Salary']):<30} ")
+class Employee_Manager:
+    def __init__(self, filename="employees.json"):
+        self.hr_username = "admin"
+        self.hr_password = "12345"
+        self.filename = filename
+        self.employees = []
+        self.load_employees()
+        if not self.employees:
+            self.employees = [
+                Employee("Ali", 101, "HR", "Manager", 75000),
+                Employee("Ahmed", 102, "IT", "Software Engineer", 90000),
+                Employee("Usman", 103, "Finance", "Accountant", 65000),
+                Employee("Hassan", 104, "Marketing", "Marketing Officer", 55000),
+                Employee("Bilal", 105, "Sales", "Sales Executive", 60000),
+                Employee("Hamza", 106, "IT", "Network Administrator", 80000),
+                Employee("Ayesha", 107, "HR", "HR Officer", 58000),
+                Employee("Fatima", 108, "Finance", "Financial Analyst", 72000),
+                Employee("Zain", 109, "Operations", "Operations Officer", 67000),
+                Employee("Maryam", 120, "Customer Support", "Support Executive", 50000),
+                Employee("Saad", 111, "Administration", "Office Administrator", 62000),
+                Employee("Noor", 112, "Research", "Research Assistant", 70000),
+                Employee("Abdullah", 113, "Finance", "Cashier", 52000),
+                Employee("Umer", 114, "IT", "System Administrator", 85000),
+                Employee("Sana", 115, "Marketing", "Content Writer", 54000),
+            ]
+            self.save_employees()
 
-def format_currency(salary):
-    return f"Rs. {salary}"
+    def login(self):
+        print("Login to Employee Management System")
+        username = input("Enter Username: ")
+        password = input("Enter Password: ")
+        if username == self.hr_username and password == self.hr_password:
+            print("Login successful!")
+            return True
+        else:
+            print("Invalid username or password!")
+            return False
 
-def add_employee():
-    try:
-        employee_ID = int(input("Enter the Employee ID: "))
-    except ValueError:
-        print("Invalid Employee ID! Please enter a number.")
-        return
-    if employee_ID <= 0:
-        print("Enter a valid Employee ID!")
-        return
+    def load_employees(self):
+        try:
+            with open(self.filename, 'r') as f:
+                data = json.load(f)
+                self.employees = [Employee.from_dict(emp) for emp in data]
+        except FileNotFoundError:
+            self.employees = []
 
-    for employee in employees:
-        if employee["Employee ID"] == employee_ID:
+    def save_employees(self):
+        with open(self.filename, 'w') as f:
+            json.dump([emp.to_dict() for emp in self.employees], f, indent=5)
+
+    def format_currency(self, salary):
+        return f"Rs. {salary:,.0f}"
+
+    def _find_by_id(self, employee_id):
+        for employee in self.employees:
+            if employee.employee_id == employee_id:  
+                return employee
+        return None
+
+    def print_employee(self):
+        print("=" * 80)
+        print(f"{'Employee Name':<8} {'Employee ID':<32} {'Department':<20} {'Position':<20} {'Position':<20}")
+        print("=" * 80)
+
+    @staticmethod
+    def format_currency(salary):
+        return f"Rs. {salary:,.0f}"
+
+    def calculate_payroll(self):
+        print("=========================================================")
+        total_payroll = sum(employee.salary for employee in self.employees)
+        print(f"Total Company Payroll: {self.format_currency(total_payroll)}")
+        print("=========================================================")
+        
+    def add_employee(self):
+        try:
+            employee_id = int(input("Enter the Employee ID: "))
+        except ValueError:
+            print("Invalid Employee ID! Please enter a number.")
+            return
+        if employee_id <= 0:
+            print("Enter a valid Employee ID!")
+            return
+
+        if self._find_by_id(employee_id):
             print("Employee ID already exists!")
             return
 
-    Name = input("Enter the Employee name: ")
-    Department = input("Enter the Department name: ")
-    Position = input("Enter the Position name: ")
-    try:
-        salary = int(input("Enter the Salary: "))
-        if salary <=0:
-            print("Salary must be a positive number!")
-            return
-    except ValueError:
-        print("Invalid Salary! Please enter a number.")
-        return  
+        name = input("Enter the Employee name: ")
+        department = input("Enter the Department name: ")
+        position = input("Enter the Position name: ")
 
-    Name = Name.strip()
-    Department = Department.strip()
-    Position = Position.strip()
-
-    if Name == "":
-        print("Employee Name cannot be empty!")
-        return
-
-    if Position == "":
-        print("Position cannot be empty!")
-        return
-    
-    if Department == "":
-        print("Department cannot be empty!")
-        return
-
-    new_employee = {
-        "Name": Name,
-        "Department": Department,
-        "Employee ID": employee_ID,
-        "Position": Position,
-        "Salary": salary
-    }
-
-    employees.append(new_employee)
-    save_employees()
-    print("New Employee Added Successfully!")
-
-def remove_employee():
-    try:
-        search = int(input("Enter the Employee ID: "))
-    except ValueError:
-        print("Invalid Employee ID! Please enter a number.")
-        return
-
-    found = False
-    for employee in employees:
-        if employee["Employee ID"] == search:
-            confirm = input(f"Are you sure you want to delete Employee {employee['Name']}? (y/n): ")
-            if confirm.lower() != "y":
-                print("Deletion cancelled.")
+        try:
+            salary = int(input("Enter the Salary: "))
+            if salary <=0:
+                print("Salary must be a positive number!")
                 return
-            employees.remove(employee)
-            save_employees()
-            print("Employee Deleted Successfully!")
-            found = True
-            break
-    if not found:
-        print("Employee Not Found!")
+        except ValueError:
+            print("Invalid Salary! Please enter a number.")
+            return  
 
-def update_employee():
-    try:
-        search = int(input("Enter the Employee ID: "))
-    except ValueError:
-        print("Invalid Employee ID! Please enter a number.")
-        return
+        name = name.strip()
+        department = department.strip()
+        position = position.strip()
 
-    found = False
-    for employee in employees:
-        if employee["Employee ID"] == search:
-            print("="*110)
-            print("Current Details:")
-            print("="*110)
-            print("{:<20} {:<20} {:<15} {:>18} {:>28} ".format("Employee ID", "Name", "Department", "Position", "Salary"))
-            print("="*110)
-            print_employee(employee)
-            print("="*110)
+        if name == "":
+            print("Employee Name cannot be empty!")
+            return
 
-            Name = input("Enter the new Employee name (leave blank to keep current): ")
-            Department = input("Enter the new Department name (leave blank to keep current): ")
-            Position = input("Enter the new Position name (leave blank to keep current): ")
-            Salary_input = input("Enter the new Salary (leave blank to keep current): ")
+        if position == "":
+            print("Position cannot be empty!")
+            return
+    
+        if department == "":
+            print("Department cannot be empty!")
+            return
 
-            if Name.strip():
-                employee["Name"] = Name.strip()
-            if Department.strip():
-                employee["Department"] = Department.strip()
-            if Position.strip():
-                employee["Position"] = Position.strip()
-            if Salary_input.strip():
-                try:
-                    salary = int(Salary_input)
-                    if salary <= 0:
-                        print("Salary must be a positive number! Keeping current salary.")
-                    else:
-                        employee["Salary"] = salary
-                except ValueError:
-                    print("Invalid Salary! Keeping current salary.")
+        new_employee = Employee(name, int(employee_id), department, position, salary)        
+        self.employees.append(new_employee)
+        self.save_employees() 
+        print("New Employee Added Successfully!")
 
-            save_employees()
-            print("Employee Updated Successfully!")
-            found = True
-            break
-    if not found:
-        print("Employee Not Found!")
+    def view_employees(self):
+        if not self.employees:
+            print("No employees available in the company!")
+            return
+        self.employees.sort(key=lambda b: b.employee_id)
+        print("=" * 120)
+        print(f"{'Employee Name':<20} {'Employee ID':<20} {'Department':<25} {'Position':<30} {'Salary':<20}")
+        print("=" * 120)
+        for employee in self.employees:
+            print(f"{employee.name:<20} {employee.employee_id:<20} {employee.department:<25} {employee.position:<30} {Employee_Manager.format_currency(employee.salary):<20}")        
+        print("=" * 120)
 
-def view_employees():
-    if len(employees) == 0:
-        print("No employees in Company!")
-        return
-    employees.sort(key=lambda emp: emp["Employee ID"])
-    print("="*110)
-    print("{:<20} {:<20} {:<15} {:>18} {:>28} ".format("Employee ID", "Name", "Department", "Position", "Salary"))
-    print("="*110)
-    for employee in employees:
-        print_employee(employee)
-    print("="*110)
-
-def search_employee():
-    print("-"*50)
-    print("Search By:")
-    print("1. Search by ID")
-    print("2. Search by Name")
-    print("-"*50)
-
-    try:
-        search_option = int(input("Enter your choice: "))
-    except ValueError:
-        print("Invalid choice! Please enter a number.")
-        return
-
-    if search_option == 1:
+    def remove_employee(self):
         try:
             search = int(input("Enter the Employee ID: "))
         except ValueError:
@@ -214,81 +197,185 @@ def search_employee():
             return
 
         found = False
-        for employee in employees:
-            if employee["Employee ID"] == search:
-                print("="*110)
-                print("{:<20} {:<20} {:<15} {:>18} {:>28} ".format("Employee ID", "Name", "Department", "Position", "Salary"))
-                print("="*110)
-                print_employee(employee)
-                print("="*110)
-                found = True
-                break
-        if not found:
-            print("Employee Not Found!")
 
-    elif search_option == 2:
-        try:
-            search_name = input("Enter the Employee Name: ").strip()
-        except ValueError:
-            print("Invalid Name!")
+        employee = self._find_by_id(search)
+        confirm = input(f"Are you sure you want to delete Employee (employee['Name'])? (y/n): ")
+        if confirm.lower() != "y":
+            print("Deletion cancelled.")
             return
+        self.employees.remove(employee)
+        self.save_employees()
+        print("Employee Deleted Successfully!")
+
+        found = True
         
-        if search_name == "":
-            print("Name cannot be empty!")
-            return
-
-        found = False
-        for employee in employees:
-            if search_name.lower() in employee["Name"].lower():
-                print("="*110)
-                print("{:<20} {:<20} {:<15} {:>18} {:>28} ".format("Employee ID", "Name", "Department", "Position", "Salary"))
-                print("="*110)
-                print_employee(employee)
-                print("="*110)
-                found = True
-
         if not found:
             print("Employee Not Found!")
 
-    else:
-        print("Invalid choice! Please choose 1 or 2.")
+    def update_employee(self):
+        try:
+            search = int(input("Enter the Employee ID: "))
+        except ValueError:
+            print("Invalid Employee ID! Please enter a number.")
+            return
+        employee = self._find_by_id(search)
+        if employee:
+            print("Enter new details (leave blank to keep current):")
+            employee.name = input(f"Name ({employee.name}): ") or employee.name
+            employee.department = input(f"Department ({employee.department}): ") or employee.department
+            employee.position = input(f"Position ({employee.position}): ") or employee.position
+            new_salary = input(f"Salary ({employee.salary}): ")
+            if new_salary:
+                try:
+                    employee.salary = int(new_salary)
+                except ValueError:
+                    print("Invalid salary! Keeping current.")
+            self.save_employees()
+            print("Employee updated successfully!")
+        else:
+            print("Employee Not Found!")
 
-def exit_system():
-    print("Good Bye!")
-    print("Thanks for using Employees Management System")
-    sys.exit()
+    def search_employee(self):
+        print("-"*50)
+        print("Search By:")
+        print("1. Search by ID")
+        print("2. Search by Name")
+        print("3. Search by Department")
+        print("4. Search by Position")
+        print("-"*50)
 
-while True:
-    print()
-    print("=============== Employee Management Menu ===============")
-    print("1. Add Employee")
-    print("2. View Employees")
-    print("3. Search Employee")
-    print("4. Update Employee")
-    print("5. Delete Employee")
-    print("0. Exit")
+        try:
+            search_option = int(input("Enter your choice: "))
+        except ValueError:
+            print("Invalid choice! Please enter a number.")
+            return
 
-    try:
-        choice = int(input("Enter the number: "))
-    except ValueError:
-        print("Invalid Choice! Please enter a number.")
-        continue
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        continue
+        if search_option == 1:
+            try:
+                search = int(input("Enter the Employee ID: "))
+            except ValueError:
+                print("Invalid Employee ID! Please enter a number.")
+                return
 
-    if choice == 1:
-        add_employee()
-    elif choice == 2:
-        view_employees()
-    elif choice == 3:
-        search_employee()
-    elif choice == 4:
-        update_employee()
-    elif choice == 5:
-        remove_employee()
-    elif choice == 0:
-        exit_system()
-    else:
-        print("Invalid Choice! Choose between 0 to 5")
+            employee = self._find_by_id(search)
 
+            if employee:
+                print("="*120)
+                print(f"{'Employee ID':<20} {'Name':<20} {'Department':<25} {'Position':<30} {'Salary':<20} ")
+                print("="*120)
+                print(f"{employee.name:<20} {employee.employee_id:<20} {employee.department:<25} {employee.position:<30} {Employee_Manager.format_currency(employee.salary):<20}")                
+                print("="*120)
+            else:
+                print("Employee Not Found!")
+
+        elif search_option == 2:
+            search_name = input("Enter the Employee Name: ").strip()
+            if search_name == "":
+                print("Name cannot be empty!")
+                return
+            found = False
+            print("="*120)
+            print(f"{'Employee ID':<20} {'Name':<20} {'Department':<25} {'Position':<30} {'Salary':<20} ")
+            print("="*120)
+            for employee in self.employees:
+                if search_name.lower() in employee.name.lower():
+                    print(f"{employee.name:<20} {employee.employee_id:<20} {employee.department:<25} {employee.position:<30} {Employee_Manager.format_currency(employee.salary):<20}")                
+                    print("="*120)
+                    found = True
+            print("="*120)
+            if not found:
+                print("Employee Not Found!")
+        elif search_option == 3:
+            search_dept = input("Enter the Department: ").strip()
+            if search_dept == "":
+                print("Department cannot be empty!")
+                return
+            found = False
+            print("="*120)
+            print(f"{'Employee ID':<20} {'Name':<20} {'Department':<25} {'Position':<30} {'Salary':<20} ")
+            print("="*120)
+            for employee in self.employees:
+                if search_dept.lower() in employee.department.lower():
+                    print(f"{employee.name:<20} {employee.employee_id:<20} {employee.department:<25} {employee.position:<30} {Employee_Manager.format_currency(employee.salary):<20}")                
+                    print("="*120)
+                    found = True
+            print("="*120)
+            if not found:
+                print("No employees found in this department!")
+
+        elif search_option == 4:
+            search_pos = input("Enter the Position: ").strip()
+            if search_pos == "":
+                print("Position cannot be empty!")
+                return
+            found = False
+            print("="*120)
+            print(f"{'Employee ID':<20} {'Name':<20} {'Department':<25} {'Position':<30} {'Salary':<20} ")
+            print("="*120)
+            for employee in self.employees:
+                if search_pos.lower() in employee.position.lower():
+                    print(f"{employee.name:<20} {employee.employee_id:<20} {employee.department:<25} {employee.position:<30} {Employee_Manager.format_currency(employee.salary):<20}")                
+                    print("="*120)
+                    found = True
+            print("="*120)
+            if not found:
+                print("No employees found in this position!")
+        else:
+            print("Invalid choice! Please choose 1, 2, 3 or 4.")
+
+    def exit_system(self):
+        print("=" * 100)
+        print("Good Bye!")
+        print("Thanks for using Employees Management System")
+        print("=" * 100)
+        sys.exit()
+
+
+def main():
+
+    print("============ Welcome to Employee Management System =============")
+    company = Employee_Manager()
+    if not company.login():
+        return
+
+    while True:
+    
+        print()
+        print("=============== Employee Management Menu ===============")
+        print("1. Add Employee")
+        print("2. View Employees")
+        print("3. Search Employee")
+        print("4. Update Employee")
+        print("5. Delete Employee")
+        print("6. Total Compnay Payroll")
+        print("0. Exit")
+        print("=========================================================")
+
+        try:
+            choice = int(input("Enter the number: "))
+        except ValueError:
+            print("Invalid Choice! Please enter a number.")
+            continue
+        except Exception as e:
+            print(f"An error occurred: (e)")
+            continue
+
+        if choice == 1:
+            company.add_employee()
+        elif choice == 2:
+            company.view_employees()
+        elif choice == 3:
+            company.search_employee()
+        elif choice == 4:
+            company.update_employee()
+        elif choice == 5:
+            company.remove_employee()
+        elif choice == 6: 
+            company.calculate_payroll()
+        elif choice == 0:
+            company.exit_system()
+        else:
+            print("Invalid Choice! Choose between 0 to 5")
+
+
+main()
