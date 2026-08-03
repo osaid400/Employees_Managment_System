@@ -3,7 +3,6 @@
 # Language: Python
 
 import json
-import os
 import sys
 
 class Admin:
@@ -25,6 +24,8 @@ class Employee:
 
     @salary.setter
     def salary(self, value):
+        if value <= 0:
+            raise ValueError("Salary must be positive.")
         self._salary = value
 
     def __str__(self):
@@ -33,7 +34,7 @@ class Employee:
             f"Employee ID: {self.employee_id}\n"
             f"Department: {self.department}\n"
             f"Position: {self.position}\n"
-            f"Salary:  {self.format_currency(self.salary)}\n"
+            f"Salary: {Employee_Manager.format_currency(self.salary)}"
             )
 
     def to_dict(self):
@@ -83,11 +84,12 @@ class Employee_Manager:
             self.save_employees()
 
     def login(self):
-        print("Login to Employee Management System")
+        self.admin = Admin("admin","12345")
+
         username = input("Enter Username: ")
         password = input("Enter Password: ")
         if username == self.hr_username and password == self.hr_password:
-            print("Login successful!")
+            print("Login to Employee Management System")
             return True
         else:
             print("Invalid username or password!")
@@ -105,19 +107,11 @@ class Employee_Manager:
         with open(self.filename, 'w') as f:
             json.dump([emp.to_dict() for emp in self.employees], f, indent=5)
 
-    def format_currency(self, salary):
-        return f"Rs. {salary:,.0f}"
-
     def _find_by_id(self, employee_id):
         for employee in self.employees:
             if employee.employee_id == employee_id:  
                 return employee
         return None
-
-    def print_employee(self):
-        print("=" * 80)
-        print(f"{'Employee Name':<8} {'Employee ID':<32} {'Department':<20} {'Position':<20} {'Salary':<20}")
-        print("=" * 80)
 
     @staticmethod
     def format_currency(salary):
@@ -199,7 +193,12 @@ class Employee_Manager:
         found = False
 
         employee = self._find_by_id(search)
-        confirm = input(f"Are you sure you want to delete Employee (employee['Name'])? (y/n): ")
+
+        if not employee:
+            print("Employee Not Found!")
+            return
+
+        confirm = input(f"Are you sure you want to delete {employee.name}? (y/n): ")     
         if confirm.lower() != "y":
             print("Deletion cancelled.")
             return
