@@ -1,64 +1,9 @@
-# =======================================
-# Employees Management System
-# Author: Muhammad Abdullah Farooq
-# Language: Python 3.11
-# =======================================
+# src/manager.py
 
 import json
-import sys
 import os
-import hashlib
 from datetime import datetime
-
-def _hash_pwd(password):
-    return hashlib.sha256(password.encode()).hexdigest()
-
-class Employee:
-    def __init__(self, name, employee_id, department, position, salary, password="12345", leaves=None, is_frozen=False):
-        self.name = name
-        self.employee_id = int(employee_id)
-        self.department = department
-        self.position = position
-        self._salary = salary
-        self.password = password if len(password) == 64 else _hash_pwd(password)
-        self.leaves = leaves if leaves is not None else []
-        self.is_frozen = is_frozen
-
-    @property
-    def salary(self):
-        return self._salary
-
-    @salary.setter
-    def salary(self, value):
-        if value <= 0:
-            raise ValueError("Salary must be positive.")
-        self._salary = value
-
-    def to_dict(self):
-        return {
-            "Name": self.name,
-            "Employee ID": self.employee_id,
-            "Department": self.department,
-            "Position": self.position,
-            "Salary": self._salary,
-            "Password": self.password,
-            "Leaves": self.leaves,
-            "Is_Frozen": self.is_frozen
-        }
-
-    @classmethod
-    def from_dict(cls, data):
-        emp = cls(
-            name=data.get("Name", "Unknown"),
-            employee_id=data.get("Employee ID", 0),
-            department=data.get("Department", "General"),
-            position=data.get("Position", "Staff"),
-            salary=data.get("Salary", 0),
-            password=data.get("Password", _hash_pwd("12345")),
-            leaves=data.get("Leaves", []),
-            is_frozen=data.get("Is_Frozen", False)
-        )
-        return emp
+from src.models import Employee, _hash_pwd
 
 class EmployeeManager:
     def __init__(self, filename="data/employees.json"):
@@ -139,11 +84,9 @@ class EmployeeManager:
             os.makedirs("Salary_Slips")
 
         basic_salary = employee.salary
-        
         allowance = basic_salary * 0.05
         medical = basic_salary * 0.05
         gross_salary = basic_salary + allowance + medical
-        
         income_tax = basic_salary * 0.05
         
         requests = self._load_leave_requests()
@@ -431,7 +374,6 @@ class EmployeeManager:
         while True:
             print("\n========================= PENDING LEAVE REQUESTS =========================")
             requests = self._load_leave_requests()
-
             pending_requests = [r for r in requests if r.get('status', 'Pending') == 'Pending']
 
             if not pending_requests:
@@ -447,7 +389,6 @@ class EmployeeManager:
                 l_type = req.get('type', 'N/A')
                 l_date = req.get('date', 'N/A')
                 l_status = req.get('status', 'Pending')
-                
                 print(f"{idx:<5} {emp_id:<10} {name:<15} {l_type:<12} {l_date:<15} {l_status}")
             print("=" * 73)
             
@@ -539,7 +480,6 @@ class EmployeeManager:
             l_type = req.get('type', 'N/A')
             l_date = req.get('date', 'N/A')
             l_status = req.get('status', 'Pending')
-            
             print(f"{idx:<5} {emp_id:<10} {name:<15} {l_type:<12} {l_date:<15} {l_status}")
         print("=" * 77)
 
@@ -604,168 +544,3 @@ class EmployeeManager:
     def logout_employee(self, employee):
         print("Goodbye!")
         print(f"Logging out {employee.name}...")
-
-def employee_menu(company, employee):
-    while True:
-        print(f"\n==================== EMPLOYEE PANEL ({employee.name}) ====================")
-        print("1. View My Profile & Department Details")
-        print("2. Apply for Leave (Full Day / Half Day)")
-        print("3. View My Leave History & Status")
-        print("4. Generate & Download My Payslip (.txt)")
-        print("5. Change My Password")
-        print("0. Logout")
-        print("==============================================================================")
-
-        try:
-            choice = int(input("Enter choice: "))
-        except ValueError:
-            print("Invalid choice! Enter a number.")
-            continue
-
-        if choice == 1:
-            company.view_employee_profile(employee)
-        elif choice == 2:
-            company.apply_for_leave(employee)
-        elif choice == 3:
-            company.view_leave_history(employee)
-        elif choice == 4:
-            company.generate_payslip(employee)
-        elif choice == 5:
-            company.change_password(employee)
-        elif choice == 0:
-            company.logout_employee(employee)
-            break
-        else:
-            print("Invalid choice! Choose between 0 to 5.")
-
-def admin_menu(company):
-    while True:                         
-        print("\n========================== ADMIN / HR MANAGEMENT PANEL ==========================")
-        print("1. Add New Employee")
-        print("2. View All Employees Roster")
-        print("3. Search Employee (ID, Name, Dept)")
-        print("4. Update Employee Details")
-        print("5. Delete Employee")
-        print("6. Department-Wise Payroll Analytics Dashboard")
-        print("7. Sort & Filter Employees List")
-        print("8. View & Approve/Reject Pending Leave Requests")
-        print("9. View All Leave History Logs")  
-        print("10. Generate Payslip for any Employee") 
-        print("11. Unfreeze Employee Account")
-        print("0. Logout")
-        print("=====================================================================================")
-
-        try:
-            choice = int(input("Enter choice: "))
-        except ValueError:
-            print("Invalid Choice! Please enter a number.")
-            continue
-
-        if choice == 1:
-            company.add_employee()
-        elif choice == 2:
-            company.view_employees()
-        elif choice == 3:
-            company.search_employee_panel()
-        elif choice == 4:
-            company.update_employee()
-        elif choice == 5:
-            company.remove_employee()
-        elif choice == 6:
-            company.show_department_analytics()
-        elif choice == 7:
-            company.sort_and_filter_menu()
-        elif choice == 8:
-            company.show_leave_requests()
-        elif choice == 9:
-            company.view_all_leave_history() 
-        elif choice == 10:
-            try:
-                emp_id = int(input("Enter Employee ID to generate payslip for: "))
-                emp = company._find_by_id(emp_id)
-                if emp:
-                    company.generate_payslip(emp)
-                else:
-                    print("Employee not found!")
-            except ValueError:
-                print("Invalid ID format.")
-        elif choice == 11:
-            company.unfreeze_employee()
-        elif choice == 0:
-            print("Goodbye!")
-            print("Logging out Administrator (HR)...")
-            break
-        else:
-            print("Invalid Choice! Choose between 0 to 11.")
-
-def main():
-    company = EmployeeManager()
-
-    while True:
-        print()
-        print("================== WELCOME TO EMPLOYEES MANAGEMENT SYSTEM =======================")
-        print("\n============================ SYSTEM MENU ======================================")
-        print("1. Login as HR/Admin")
-        print("2. Login as Employee")
-        print("0. Exit")
-        print("=================================================================================")
-        
-        choice = input("Enter choice (1-2): ").strip()
-        
-        if choice == '1':
-            attempts = 3
-            success = False
-            while attempts > 0:
-                pwd = input("Enter Admin Password: ").strip()
-                if _hash_pwd(pwd) == company.hr_password_hash:
-                    print("\n[SUCCESS] Logged in as Administrator (HR)!")
-                    success = True
-                    admin_menu(company)
-                    break
-                else:
-                    attempts -= 1
-                    print(f"\n[ERROR] Incorrect Admin Password! Attempts remaining: {attempts}")
-            if not success and attempts == 0:
-                print("\n[ERROR] Too many failed login attempts. Access locked for this session.")
-        elif choice == '2':
-            try:
-                eid = int(input("Enter Employee ID: "))
-                emp = company._find_by_id(eid)
-                if emp:
-                    if emp.is_frozen:
-                        print("\n[ERROR] Your account is FROZEN due to multiple failed login attempts! Please contact HR/Admin to unfreeze it.")
-                        continue
-                    
-                    attempts = 3
-                    success = False
-                    while attempts > 0:
-                        pwd = input("Enter Password: ").strip()
-                        if emp.password == _hash_pwd(pwd):
-                            print(f"\n[SUCCESS] Welcome back, {emp.name}!")
-                            success = True
-                            employee_menu(company, emp)
-                            break
-                        else:
-                            attempts -= 1
-                            print(f"\n[ERROR] Incorrect Password! Attempts remaining: {attempts}")
-                    
-                    if not success and attempts == 0:
-                        emp.is_frozen = True
-                        company.save_employees()
-                        print("\n[ERROR] Too many failed login attempts! Your account has been FROZEN. Contact Admin.")
-                else:
-                    print("\n[ERROR] Invalid Employee ID!")
-            except ValueError:
-                print("\n[ERROR] Invalid Employee ID format!")
-
-        elif choice == '0':
-            print("=" * 60)
-            print("Good Bye!")
-            print("Thanks for using Employees Management System")
-            print("=" * 60)
-            sys.exit()
-        else:
-            print("Invalid choice! Please select 1, 2, or 0.")
-
-if __name__ == "__main__":
-    main()

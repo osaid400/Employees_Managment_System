@@ -1,1 +1,4 @@
-employees.json
+data/
+Salary_Slips/
+__pycache__/
+*.pyc
