@@ -7,21 +7,21 @@
 import json
 import sys
 import os
+import hashlib
+from datetime import datetime
 
-
-if not os.path.exists("Salary_Slips"):
-    os.makedirs("Salary_Slips")
-
+def _hash_pwd(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
 class Employee:
-    def __init__(self, name, employee_id, department, position, salary, password="12345"):
+    def __init__(self, name, employee_id, department, position, salary, password="12345", leaves=None):
         self.name = name
         self.employee_id = int(employee_id)
         self.department = department
         self.position = position
         self._salary = salary
-        self.password = password
-        self.leaves = []
+        self.password = password if len(password) == 64 else _hash_pwd(password)
+        self.leaves = leaves if leaves is not None else []
 
     @property
     def salary(self):
@@ -47,46 +47,79 @@ class Employee:
     @classmethod
     def from_dict(cls, data):
         emp = cls(
-            name=data["Name"],
-            employee_id=data["Employee ID"],
-            department=data["Department"],
-            position=data["Position"],
-            salary=data["Salary"],
-            password=data.get("Password", "12345")
+            name=data.get("Name", "Unknown"),
+            employee_id=data.get("Employee ID", 0),
+            department=data.get("Department", "General"),
+            position=data.get("Position", "Staff"),
+            salary=data.get("Salary", 0),
+            password=data.get("Password", _hash_pwd("12345")),
+            leaves=data.get("Leaves", [])
         )
-        emp.leaves = data.get("Leaves", [])
         return emp
-
 
 class EmployeeManager:
     def __init__(self, filename="data/employees.json"):
         self.hr_username = "admin"
-        self.hr_password = "0000"
+        self.hr_password_hash = _hash_pwd("0000")
         self.filename = filename
         self.employees = []
         self.load_employees()
         
         if not self.employees:
             self.employees = [
-                Employee("Ali", 101, "HR", "Manager", 75000),
-                Employee("Ahmed", 102, "IT", "Software Engineer", 90000),
-                Employee("Usman", 103, "Finance", "Accountant", 65000),
-                Employee("Hassan", 104, "Marketing", "Marketing Officer", 55000),
-                Employee("Bilal", 105, "Sales", "Sales Executive", 60000),
+                Employee("Ali", 101, "HR", "Manager", 75000, _hash_pwd("12345")),
+                Employee("Ahmed", 102, "IT", "Software Engineer", 90000, _hash_pwd("12345")),
+                Employee("Usman", 103, "Finance", "Accountant", 65000, _hash_pwd("12345")),
+                Employee("Hassan", 104, "Marketing", "Marketing Officer", 55000, _hash_pwd("12345")),
+                Employee("Bilal", 105, "Sales", "Sales Executive", 60000, _hash_pwd("12345")),
+                Employee("Zainab", 106, "IT", "UI/UX Designer", 70000, _hash_pwd("12345")),
+                Employee("Hamza", 107, "Finance", "Financial Analyst", 80000, _hash_pwd("12345")),
+                Employee("Ayesha", 108, "HR", "Recruiter", 50000, _hash_pwd("12345")),
+                Employee("Omer", 109, "Operations", "Operations Manager", 85000, _hash_pwd("12345")),
+                Employee("Fatima", 110, "Marketing", "Content Writer", 48000, _hash_pwd("12345")),
+                Employee("Saad", 111, "IT", "Backend Developer", 95000, _hash_pwd("12345")),
+                Employee("Sana", 112, "Sales", "Sales Manager", 88000, _hash_pwd("12345")),
+                Employee("Zeeshan", 113, "Operations", "Logistics Officer", 52000, _hash_pwd("12345")),
+                Employee("Hira", 114, "Finance", "Auditor", 72000, _hash_pwd("12345")),
+                Employee("Danish", 115, "IT", "QA Engineer", 65000, _hash_pwd("12345")),
             ]
             self.save_employees()
 
     def load_employees(self):
         try:
-            with open(self.filename, 'r') as f:
-                data = json.load(f)
+            with open(self.filename, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                if not content:
+                    self.employees = []
+                    return
+                data = json.loads(content)
                 self.employees = [Employee.from_dict(emp) for emp in data]
-        except FileNotFoundError:
+        except (FileNotFoundError, json.JSONDecodeError):
             self.employees = []
 
     def save_employees(self):
-        with open(self.filename, 'w') as f:
+        os.makedirs(os.path.dirname(self.filename), exist_ok=True)
+        with open(self.filename, 'w', encoding='utf-8') as f:
             json.dump([emp.to_dict() for emp in self.employees], f, indent=4)
+
+    def _load_leave_requests(self):
+        file_path = "data/leave_requests.json"
+        if not os.path.exists(file_path):
+            return []
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if not content:
+                    return []
+                return json.loads(content)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return []
+
+    def _save_leave_requests(self, requests):
+        os.makedirs("data", exist_ok=True)
+        file_path = "data/leave_requests.json"
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(requests, f, indent=4)
 
     def _find_by_id(self, employee_id):
         for employee in self.employees:
@@ -99,28 +132,66 @@ class EmployeeManager:
         return f"Rs. {amount:,.0f}"
 
     def generate_payslip(self, employee):
-        filepath = os.path.join("Salary_Slips", f"payslip_{employee.employee_id}.txt")
-        allowances = employee.salary * 0.10
-        deductions = employee.salary * 0.05
-        net_salary = employee.salary + allowances - deductions
+        if not os.path.exists("Salary_Slips"):
+            os.makedirs("Salary_Slips")
 
-        with open(filepath, 'w') as f:
-            f.write("=========================================\n")
-            f.write("          OFFICIAL COMPANY PAYSLIP       \n")
-            f.write("=========================================\n")
+        basic_salary = employee.salary
+        
+        allowance = basic_salary * 0.05
+        medical = basic_salary * 0.05
+        gross_salary = basic_salary + allowance + medical
+        
+        income_tax = basic_salary * 0.05
+        
+        requests = self._load_leave_requests()
+        emp_approved_leaves = [
+            r for r in requests 
+            if r.get('emp_id') == employee.employee_id and r.get('status') == 'Approved'
+        ]
+        
+        leave_days_count = 0.0
+        for leave in emp_approved_leaves:
+            l_type = leave.get('type', '')
+            if l_type == 'Full Day':
+                leave_days_count += 1.0
+            elif l_type == 'Half Day':
+                leave_days_count += 0.5
+                
+        per_day_salary = basic_salary / 30 if basic_salary > 0 else 0
+        leave_deduction = per_day_salary * leave_days_count
+        
+        total_deductions = income_tax + leave_deduction
+        net_salary = gross_salary - total_deductions
+        
+        current_date = datetime.now()
+        month_year_str = current_date.strftime("%B_%Y")
+        filename = f"payslip_{employee.employee_id}_{month_year_str}.txt"
+        filepath = os.path.join("Salary_Slips", filename)
+
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write("=====================================================\n")
+            f.write("                 OFFICIAL COMPANY PAYSLIP            \n")
+            f.write(f"                 Month: {current_date.strftime('%B %Y')} \n")
+            f.write("=====================================================\n")
             f.write(f"Employee Name : {employee.name}\n")
             f.write(f"Employee ID   : {employee.employee_id}\n")
             f.write(f"Department    : {employee.department}\n")
             f.write(f"Position      : {employee.position}\n")
-            f.write("-----------------------------------------\n")
-            f.write(f"Basic Salary  : {self.format_currency(employee.salary)}\n")
-            f.write(f"Allowances    : {self.format_currency(allowances)}\n")
-            f.write(f"Deductions    : {self.format_currency(deductions)}\n")
-            f.write("-----------------------------------------\n")
+            f.write("-----------------------------------------------------\n")
+            f.write(f"Basic Salary  : {self.format_currency(basic_salary)}\n")
+            f.write(f"Allowance (5%): {self.format_currency(allowance)}\n")
+            f.write(f"Medical (5%)  : {self.format_currency(medical)}\n")
+            f.write(f"Gross Salary  : {self.format_currency(gross_salary)}\n")
+            f.write("-------------------------------------------------------\n")
+            f.write(f"Income Tax (5%): {self.format_currency(income_tax)}\n")
+            f.write(f"Approved Leaves: {leave_days_count} day(s)\n")
+            f.write(f"Leave Deduction: {self.format_currency(leave_deduction)}\n")
+            f.write(f"Total Deductions: {self.format_currency(total_deductions)}\n")
+            f.write("-------------------------------------------------------\n")
             f.write(f"Net Pay       : {self.format_currency(net_salary)}\n")
-            f.write("=========================================\n")
+            f.write("=======================================================\n")
         
-        print(f"\n[SUCCESS] Payslip saved in 'Salary_Slips/' folder as 'payslip_{employee.employee_id}.txt'!")
+        print(f"\n[SUCCESS] Payslip saved in 'Salary_Slips/' folder as '{filename}'!")
 
     def show_department_analytics(self):
         if not self.employees:
@@ -209,7 +280,7 @@ class EmployeeManager:
             print("Fields cannot be empty!")
             return
 
-        new_emp = Employee(name, employee_id, department, position, salary)
+        new_emp = Employee(name, employee_id, department, position, salary, _hash_pwd("12345"))
         self.employees.append(new_emp)
         self.save_employees()
         print("[SUCCESS] New Employee Added Successfully with default password '12345'!")
@@ -230,10 +301,16 @@ class EmployeeManager:
         emp = self._find_by_id(search_id)
         if emp:
             print("Leave blank to keep existing details:")
-            emp.name = input(f"Name ({emp.name}): ") or emp.name
-            emp.department = input(f"Department ({emp.department}): ") or emp.department
-            emp.position = input(f"Position ({emp.position}): ") or emp.position
-            new_sal = input(f"Salary ({emp.salary}): ")
+            name_in = input(f"Name ({emp.name}): ").strip()
+            if name_in:
+                emp.name = name_in
+            dept_in = input(f"Department ({emp.department}): ").strip()
+            if dept_in:
+                emp.department = dept_in
+            pos_in = input(f"Position ({emp.position}): ").strip()
+            if pos_in:
+                emp.position = pos_in
+            new_sal = input(f"Salary ({emp.salary}): ").strip()
             if new_sal:
                 try:
                     emp.salary = int(new_sal)
@@ -256,7 +333,7 @@ class EmployeeManager:
             print("Employee not found!")
             return
 
-        confirm = input(f"Are you sure you want to delete {emp.name}? (y/n): ")
+        confirm = input(f"Are you sure you want to delete {emp.name}? (y/n): ").strip()
         if confirm.lower() == 'y':
             self.employees.remove(emp)
             self.save_employees()
@@ -264,38 +341,197 @@ class EmployeeManager:
         else:
             print("Deletion cancelled.")
 
-    def show_leave_requests(self):
-        print("\n--- ALL EMPLOYEE LEAVE REQUESTS ---")
-        
-        file_path = "data/leave_requests.json"
-        leave_requests = []
-        
-        if os.path.exists(file_path):
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    content = f.read().strip()
-                    if content:
-                        leave_requests = json.loads(content)
-            except Exception:
-                leave_requests = []
-        elif hasattr(self, 'leave_requests'):
-            leave_requests = self.leave_requests
+    def apply_for_leave(self, employee):
+        print("\n========================== Leave Application ==========================")
+        print("1. Full Day Leave")
+        print("2. Half Day Leave")
+        print("=======================================================================")
 
-        if not leave_requests:
-            print("No leave requests found.")
-            print("-" * 50)
+        leave_type_choice = input("Select type (1 or 2): ").strip()
+        
+        if leave_type_choice == "1":
+            leave_type = "Full Day"
+        elif leave_type_choice == "2":
+            leave_type = "Half Day"
+        else:
+            print("Invalid leave type selection.")
+            return
+        
+        while True:
+            date_input = input("Enter Leave Date (DD-MM-YYYY): ").strip()
+            if not date_input:
+                print("Date cannot be empty.")
+                continue
+            
+            try:
+                leave_date = datetime.strptime(date_input, "%d-%m-%Y").date()
+                today = datetime.now().date()
+                if leave_date <= today:
+                    print("[ERROR] Leave date must be in the future! You cannot apply for past or current dates.")
+                    continue
+                break
+            except ValueError:
+                print("[ERROR] Invalid date format or invalid date! Please use DD-MM-YYYY (e.g., 25-08-2026).")
+
+        reason = input("Enter Reason for Leave: ").strip()
+        if not reason:
+            print("Reason cannot be empty.")
             return
 
-        for idx, leave in enumerate(leave_requests):
-            emp_id = leave.get('emp_id', leave.get('id', 'N/A'))
-            name = leave.get('name', 'Unknown')
-            l_type = leave.get('type', 'N/A')
-            l_reason = leave.get('reason', 'No reason provided')
-            l_status = leave.get('status', 'Pending')
+        print(f"\nApplying for {leave_type} Leave on {date_input}...")
+        
+        requests = self._load_leave_requests()
+        leave_id = f"L_{int(datetime.now().timestamp() * 1000)}"
+        new_request = {
+            "leave_id": leave_id,
+            "emp_id": employee.employee_id,
+            "name": employee.name,
+            "type": leave_type,
+            "date": date_input,
+            "reason": reason,
+            "status": "Pending"
+        }
+        requests.append(new_request)
+        self._save_leave_requests(requests)
+        
+        print("[SUCCESS] Leave application submitted successfully!")
+
+    def show_leave_requests(self):
+        while True:
+            print("\n========================= PENDING LEAVE REQUESTS =========================")
+            requests = self._load_leave_requests()
+
+            pending_requests = [r for r in requests if r.get('status', 'Pending') == 'Pending']
+
+            if not pending_requests:
+                print("No pending leave requests found.")
+                print("=" * 73)
+                return
+
+            print(f"{'No.':<5} {'Emp ID':<10} {'Name':<15} {'Type':<12} {'Date':<15} {'Status'}")
+            print("=" * 73)
+            for idx, req in enumerate(pending_requests, 1):
+                emp_id = str(req.get('emp_id', 'N/A'))
+                name = req.get('name', 'Unknown')
+                l_type = req.get('type', 'N/A')
+                l_date = req.get('date', 'N/A')
+                l_status = req.get('status', 'Pending')
+                
+                print(f"{idx:<5} {emp_id:<10} {name:<15} {l_type:<12} {l_date:<15} {l_status}")
+            print("=" * 73)
             
-            print(f"Employee ID: {emp_id} | Name: {name}")
-            print(f"Leave #{idx+1} | Type: {l_type} | Reason: {l_reason} | Status: {l_status}")
-            print("-" * 60)
+            print("\nOptions:")
+            print("1. Take Action (Approve / Reject a Leave Request)")
+            print("0. Back to Admin Menu")
+            
+            choice = input("Enter choice: ").strip()
+            if choice == '1':
+                try:
+                    req_num = int(input("Enter Leave Request Number to process: "))
+                    if req_num < 1 or req_num > len(pending_requests):
+                        print("[ERROR] Invalid request number!")
+                        continue
+                    
+                    target_req = pending_requests[req_num - 1]
+                    print(f"\nSelected: Leave for {target_req.get('name')} on {target_req.get('date')} | Reason: {target_req.get('reason')}")
+                    print("1. Approve")
+                    print("2. Reject")
+                    action = input("Select action (1/2): ").strip()
+
+                    new_status = ""
+                    if action == '1':
+                        new_status = 'Approved'
+                    elif action == '2':
+                        new_status = 'Rejected'
+                    else:
+                        print("[ERROR] Invalid action choice.")
+                        continue
+
+                    target_leave_id = target_req.get("leave_id")
+                    for main_req in requests:
+                        if target_leave_id and main_req.get("leave_id") == target_leave_id:
+                            main_req['status'] = new_status
+                            break
+                        elif not target_leave_id and (
+                            main_req.get('emp_id') == target_req.get('emp_id') and 
+                            main_req.get('date') == target_req.get('date') and 
+                            main_req.get('reason') == target_req.get('reason')
+                        ):
+                            main_req['status'] = new_status
+                            break
+
+                    self._save_leave_requests(requests)
+                    print(f"[SUCCESS] Leave request {new_status.lower()} successfully!")
+                except ValueError:
+                    print("[ERROR] Please enter a valid number.")
+            elif choice == '0':
+                break
+            else:
+                print("[ERROR] Invalid choice! Please select 1 or 0.")
+
+    def view_leave_history(self, employee):
+        requests = self._load_leave_requests()
+        emp_requests = [r for r in requests if r.get('emp_id') == employee.employee_id]
+
+        if not emp_requests:
+            print("\nNo leave history found.")
+            return
+            
+        print(f"\n======================== Leave History for {employee.name} ========================")
+        for idx, l in enumerate(emp_requests, 1):
+            l_type = l.get('type', 'N/A')
+            l_date = l.get('date', 'N/A')
+            l_reason = l.get('reason', 'No reason provided')
+            l_status = l.get('status', 'Pending')
+            
+            print(f"Leave Request #{idx}")
+            print(f"  • Type   : {l_type}")
+            print(f"  • Date   : {l_date}")
+            print(f"  • Reason : {l_reason}")
+            print(f"  • Status : {l_status}")
+            print("-" * 65)
+
+    def view_all_leave_history(self):
+        print("\n=========================== ALL LEAVE HISTORY LOGS ==========================")
+        requests = self._load_leave_requests()
+
+        if not requests:
+            print("No leave history records found.")
+            print("=" * 77)
+            return
+
+        print(f"{'No.':<5} {'Emp ID':<10} {'Name':<15} {'Type':<12} {'Date':<15} {'Status'}")
+        print("=" * 77)
+        for idx, req in enumerate(requests, 1):
+            emp_id = str(req.get('emp_id', 'N/A'))
+            name = req.get('name', 'Unknown')
+            l_type = req.get('type', 'N/A')
+            l_date = req.get('date', 'N/A')
+            l_status = req.get('status', 'Pending')
+            
+            print(f"{idx:<5} {emp_id:<10} {name:<15} {l_type:<12} {l_date:<15} {l_status}")
+        print("=" * 77)
+
+    def change_password(self, employee):
+        print("\n--- Change Password ---")
+        old_pwd = input("Enter current password: ").strip()
+        if _hash_pwd(old_pwd) != employee.password:
+            print("[ERROR] Incorrect current password!")
+            return
+        
+        new_pwd = input("Enter new password: ").strip()
+        if not new_pwd:
+            print("[ERROR] Password cannot be empty!")
+            return
+        
+        confirm_pwd = input("Confirm new password: ").strip()
+        if new_pwd != confirm_pwd:
+            print("[ERROR] Passwords do not match!")
+            return
+        
+        employee.password = _hash_pwd(new_pwd)
+        self.save_employees()
+        print("[SUCCESS] Password changed successfully!")
 
     def search_employee_panel(self):
         print("-"*50)
@@ -315,61 +551,17 @@ class EmployeeManager:
             if emp: self._print_employee_table([emp])
             else: print("Not found.")
         elif opt == 2:
-            name = input("Enter Name: ").lower()
+            name = input("Enter Name: ").strip().lower()
             res = [e for e in self.employees if name in e.name.lower()]
             if res: self._print_employee_table(res)
             else: print("Not found.")
         elif opt == 3:
-            dept = input("Enter Dept: ").lower()
+            dept = input("Enter Dept: ").strip().lower()
             res = [e for e in self.employees if dept in e.department.lower()]
             if res: self._print_employee_table(res)
             else: print("Not found.")
 
-    def view_leave_history(self, employee):
-        if not employee.leaves:
-            print("No leave history found.")
-            return
-        print(f"\n======================== Leave History for {employee.name} ========================")
-        for idx, l in enumerate(employee.leaves, 1):
-            l_type = l.get('type', 'N/A')
-            l_reason = l.get('reason', 'No reason provided')
-            l_status = l.get('status', 'Pending')
-            print(f"{idx}. Type: {l_type} | Reason: {l_reason} | Status: {l_status}")
-            print("=======================================================================")
-
-    def apply_for_leave(self, employee):
-        print("\n========================== Leave Application ==========================")
-        print("1. Full Day Leave")
-        print("2. Half Day Leave")
-        print("=======================================================================")
-
-        leave_type_choice = input("Select type (1 or 2): ").strip()
-        
-        if leave_type_choice == "1":
-            leave_type = "Full Day"
-        elif leave_type_choice == "2":
-            leave_type = "Half Day"
-        else:
-            print("Invalid leave type selection.")
-            return
-        
-        reason = input("Enter Reason for Leave: ").strip()
-        if not reason:
-            print("Reason cannot be empty.")
-            return
-
-        print(f"\nApplying for {leave_type} Leave...")
-        
-        employee.leaves.append({
-            "type": leave_type, 
-            "reason": reason, 
-            "status": "Pending"
-        })
-        self.save_employees()
-        print("[SUCCESS] Leave application submitted successfully!")
-
     def view_employee_profile(self, employee):
-
         print("\n=========================== My Profile Details ===========================")
         print(f"Name       : {employee.name}")
         print(f"ID         : {employee.employee_id}")
@@ -389,6 +581,7 @@ def employee_menu(company, employee):
         print("2. Apply for Leave (Full Day / Half Day)")
         print("3. View My Leave History & Status")
         print("4. Generate & Download My Payslip (.txt)")
+        print("5. Change My Password")
         print("0. Logout")
         print("==============================================================================")
 
@@ -400,20 +593,19 @@ def employee_menu(company, employee):
 
         if choice == 1:
             company.view_employee_profile(employee)
-
         elif choice == 2:
             company.apply_for_leave(employee)
-            
         elif choice == 3:
             company.view_leave_history(employee)
-
         elif choice == 4:
             company.generate_payslip(employee)
+        elif choice == 5:
+            company.change_password(employee)
         elif choice == 0:
             company.logout_employee(employee)
             break
         else:
-            print("Invalid choice! Choose between 0 to 4.")
+            print("Invalid choice! Choose between 0 to 5.")
 
 def admin_menu(company):
     while True:                         
@@ -425,8 +617,9 @@ def admin_menu(company):
         print("5. Delete Employee")
         print("6. Department-Wise Payroll Analytics Dashboard")
         print("7. Sort & Filter Employees List")
-        print("8. View & Approve/Reject Leave Requests")
-        print("9. Generate Payslip for any Employee")
+        print("8. View & Approve/Reject Pending Leave Requests")
+        print("9. View All Leave History Logs")  
+        print("10. Generate Payslip for any Employee") 
         print("0. Logout")
         print("=====================================================================================")
 
@@ -453,6 +646,8 @@ def admin_menu(company):
         elif choice == 8:
             company.show_leave_requests()
         elif choice == 9:
+            company.view_all_leave_history() 
+        elif choice == 10:
             try:
                 emp_id = int(input("Enter Employee ID to generate payslip for: "))
                 emp = company._find_by_id(emp_id)
@@ -463,11 +658,11 @@ def admin_menu(company):
             except ValueError:
                 print("Invalid ID format.")
         elif choice == 0:
-            company.logout_employee(emp)
+            print("Goodbye!")
+            print("Logging out Administrator (HR)...")
             break
         else:
-            print("Invalid Choice! Choose between 0 to 9.")
-
+            print("Invalid Choice! Choose between 0 to 10.")
 
 def main():
     company = EmployeeManager()
@@ -481,25 +676,44 @@ def main():
         print("0. Exit")
         print("=================================================================================")
         
-        choice = input("Enter choice (1-3): ").strip()
+        choice = input("Enter choice (1-2): ").strip()
         
         if choice == '1':
-            pwd = input("Enter Admin Password: ").strip()
-            if pwd == company.hr_password:
-                print("\n[SUCCESS] Logged in as Administrator (HR)!")
-                admin_menu(company)
-            else:
-                print("\n[ERROR] Incorrect Admin Password!")
+            attempts = 3
+            success = False
+            while attempts > 0:
+                pwd = input("Enter Admin Password: ").strip()
+                if _hash_pwd(pwd) == company.hr_password_hash:
+                    print("\n[SUCCESS] Logged in as Administrator (HR)!")
+                    success = True
+                    admin_menu(company)
+                    break
+                else:
+                    attempts -= 1
+                    print(f"\n[ERROR] Incorrect Admin Password! Attempts remaining: {attempts}")
+            if not success and attempts == 0:
+                print("\n[ERROR] Too many failed login attempts. Access locked for this session.")
         elif choice == '2':
             try:
                 eid = int(input("Enter Employee ID: "))
-                pwd = input("Enter Password: ").strip()
                 emp = company._find_by_id(eid)
-                if emp and emp.password == pwd:
-                    print(f"\n[SUCCESS] Welcome back, {emp.name}!")
-                    employee_menu(company, emp)
+                if emp:
+                    attempts = 3
+                    success = False
+                    while attempts > 0:
+                        pwd = input("Enter Password: ").strip()
+                        if emp.password == _hash_pwd(pwd):
+                            print(f"\n[SUCCESS] Welcome back, {emp.name}!")
+                            success = True
+                            employee_menu(company, emp)
+                            break
+                        else:
+                            attempts -= 1
+                            print(f"\n[ERROR] Incorrect Password! Attempts remaining: {attempts}")
+                    if not success and attempts == 0:
+                        print("\n[ERROR] Too many failed login attempts. Access locked for this session.")
                 else:
-                    print("\n[ERROR] Invalid Employee ID or Password!")
+                    print("\n[ERROR] Invalid Employee ID!")
             except ValueError:
                 print("\n[ERROR] Invalid Employee ID format!")
 
@@ -511,7 +725,6 @@ def main():
             sys.exit()
         else:
             print("Invalid choice! Please select 1, 2, or 0.")
-
 
 if __name__ == "__main__":
     main()

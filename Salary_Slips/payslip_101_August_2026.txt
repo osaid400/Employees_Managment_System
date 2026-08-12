@@ -1,0 +1,21 @@
+=====================================================
+                 OFFICIAL COMPANY PAYSLIP            
+                 Month: August 2026 
+=====================================================
+Employee Name : Ali
+Employee ID   : 101
+Department    : HR
+Position      : Manager
+-----------------------------------------------------
+Basic Salary  : Rs. 75,000
+Allowance (5%): Rs. 3,750
+Medical (5%)  : Rs. 3,750
+Gross Salary  : Rs. 82,500
+-------------------------------------------------------
+Income Tax (5%): Rs. 3,750
+Approved Leaves: 0.0 day(s)
+Leave Deduction: Rs. 0
+Total Deductions: Rs. 3,750
+-------------------------------------------------------
+Net Pay       : Rs. 78,750
+=======================================================
