@@ -511,26 +511,39 @@ class EmployeeManager:
         print("2. Name")
         print("3. Department")
         print("-"*50)
+
         try:
             opt = int(input("Choice: "))
         except ValueError:
+            print("[ERROR] Invalid choice format!")
             return
         
         if opt == 1:
-            eid = int(input("Enter ID: "))
-            emp = self._find_by_id(eid)
-            if emp: self._print_employee_table([emp])
-            else: print("Not found.")
+            try:
+                eid = int(input("Enter ID: "))
+                emp = self._find_by_id(eid)
+                if emp: 
+                    self._print_employee_table([emp])
+                else: 
+                    print("Employee not found.")
+            except ValueError:
+                print("[ERROR] Invalid ID format! Must be a number.")
         elif opt == 2:
             name = input("Enter Name: ").strip().lower()
             res = [e for e in self.employees if name in e.name.lower()]
-            if res: self._print_employee_table(res)
-            else: print("Not found.")
+            if res: 
+                self._print_employee_table(res)
+            else: 
+                print("Employee not found.")
         elif opt == 3:
             dept = input("Enter Dept: ").strip().lower()
             res = [e for e in self.employees if dept in e.department.lower()]
-            if res: self._print_employee_table(res)
-            else: print("Not found.")
+            if res: 
+                self._print_employee_table(res)
+            else: 
+                print("Department not found.")
+        else:
+            print("[ERROR] Invalid option selected!")
 
     def view_employee_profile(self, employee):
         print("\n=========================== My Profile Details ===========================")
