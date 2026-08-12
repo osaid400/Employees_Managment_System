@@ -14,7 +14,7 @@ def _hash_pwd(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 class Employee:
-    def __init__(self, name, employee_id, department, position, salary, password="12345", leaves=None):
+    def __init__(self, name, employee_id, department, position, salary, password="12345", leaves=None, is_frozen=False):
         self.name = name
         self.employee_id = int(employee_id)
         self.department = department
@@ -22,6 +22,7 @@ class Employee:
         self._salary = salary
         self.password = password if len(password) == 64 else _hash_pwd(password)
         self.leaves = leaves if leaves is not None else []
+        self.is_frozen = is_frozen
 
     @property
     def salary(self):
@@ -41,7 +42,8 @@ class Employee:
             "Position": self.position,
             "Salary": self._salary,
             "Password": self.password,
-            "Leaves": self.leaves
+            "Leaves": self.leaves,
+            "Is_Frozen": self.is_frozen
         }
 
     @classmethod
@@ -53,7 +55,8 @@ class Employee:
             position=data.get("Position", "Staff"),
             salary=data.get("Salary", 0),
             password=data.get("Password", _hash_pwd("12345")),
-            leaves=data.get("Leaves", [])
+            leaves=data.get("Leaves", []),
+            is_frozen=data.get("Is_Frozen", False)
         )
         return emp
 
@@ -189,7 +192,7 @@ class EmployeeManager:
             f.write(f"Total Deductions: {self.format_currency(total_deductions)}\n")
             f.write("-------------------------------------------------------\n")
             f.write(f"Net Pay       : {self.format_currency(net_salary)}\n")
-            f.write("=======================================================\n")
+            f.write("======================================================-\n")
         
         print(f"\n[SUCCESS] Payslip saved in 'Salary_Slips/' folder as '{filename}'!")
 
@@ -245,12 +248,13 @@ class EmployeeManager:
             print("Invalid choice!")
 
     def _print_employee_table(self, emp_list):
-        print("=" * 110)
-        print(f"{'ID':<10} {'Name':<20} {'Department':<20} {'Position':<25} {'Salary':<15}")
-        print("=" * 110)
+        print("=" * 115)
+        print(f"{'ID':<10} {'Name':<20} {'Department':<20} {'Position':<25} {'Salary':<15} {'Status':<15}")
+        print("=" * 115)
         for emp in emp_list:
-            print(f"{emp.employee_id:<10} {emp.name:<20} {emp.department:<20} {emp.position:<25} {self.format_currency(emp.salary):<15}")
-        print("=" * 110)
+            status_str = "Frozen" if emp.is_frozen else "Active"
+            print(f"{emp.employee_id:<10} {emp.name:<20} {emp.department:<20} {emp.position:<25} {self.format_currency(emp.salary):<15} {status_str:<15}")
+        print("=" * 115)
 
     def add_employee(self):
         try:
@@ -340,6 +344,33 @@ class EmployeeManager:
             print("[SUCCESS] Employee deleted successfully!")
         else:
             print("Deletion cancelled.")
+
+    def unfreeze_employee(self):
+        frozen_emps = [e for e in self.employees if e.is_frozen]
+        if not frozen_emps:
+            print("\n[INFO] No frozen employee accounts found.")
+            return
+        
+        print("\n========================= FROZEN EMPLOYEE ACCOUNTS =========================")
+        print(f"{'No.':<5} {'Emp ID':<10} {'Name':<20} {'Department':<20}")
+        print("=" * 60)
+        for idx, emp in enumerate(frozen_emps, 1):
+            print(f"{idx:<5} {emp.employee_id:<10} {emp.name:<20} {emp.department:<20}")
+        print("=" * 60)
+        
+        try:
+            choice = int(input("Enter number of employee to unfreeze (0 to cancel): "))
+            if choice == 0:
+                return
+            if 1 <= choice <= len(frozen_emps):
+                target_emp = frozen_emps[choice - 1]
+                target_emp.is_frozen = False
+                self.save_employees()
+                print(f"\n[SUCCESS] Employee {target_emp.name} (ID: {target_emp.employee_id}) account has been unfrozen successfully!")
+            else:
+                print("[ERROR] Invalid selection.")
+        except ValueError:
+            print("[ERROR] Invalid input format.")
 
     def apply_for_leave(self, employee):
         print("\n========================== Leave Application ==========================")
@@ -620,6 +651,7 @@ def admin_menu(company):
         print("8. View & Approve/Reject Pending Leave Requests")
         print("9. View All Leave History Logs")  
         print("10. Generate Payslip for any Employee") 
+        print("11. Unfreeze Employee Account")
         print("0. Logout")
         print("=====================================================================================")
 
@@ -657,12 +689,14 @@ def admin_menu(company):
                     print("Employee not found!")
             except ValueError:
                 print("Invalid ID format.")
+        elif choice == 11:
+            company.unfreeze_employee()
         elif choice == 0:
             print("Goodbye!")
             print("Logging out Administrator (HR)...")
             break
         else:
-            print("Invalid Choice! Choose between 0 to 10.")
+            print("Invalid Choice! Choose between 0 to 11.")
 
 def main():
     company = EmployeeManager()
@@ -698,6 +732,10 @@ def main():
                 eid = int(input("Enter Employee ID: "))
                 emp = company._find_by_id(eid)
                 if emp:
+                    if emp.is_frozen:
+                        print("\n[ERROR] Your account is FROZEN due to multiple failed login attempts! Please contact HR/Admin to unfreeze it.")
+                        continue
+                    
                     attempts = 3
                     success = False
                     while attempts > 0:
@@ -710,8 +748,11 @@ def main():
                         else:
                             attempts -= 1
                             print(f"\n[ERROR] Incorrect Password! Attempts remaining: {attempts}")
+                    
                     if not success and attempts == 0:
-                        print("\n[ERROR] Too many failed login attempts. Access locked for this session.")
+                        emp.is_frozen = True
+                        company.save_employees()
+                        print("\n[ERROR] Too many failed login attempts! Your account has been FROZEN. Contact Admin.")
                 else:
                     print("\n[ERROR] Invalid Employee ID!")
             except ValueError:
